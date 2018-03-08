@@ -7,9 +7,9 @@ Author:     Jamie Bicknell
 Twitter:    @jamiebicknell
 */
 
-define('THUMB_CACHE',           'cache');    // Path to cache directory (must be writeable)
+define('THUMB_CACHE',           'cache');       // Path to cache directory (must be writeable)
 define('THUMB_CACHE_AGE',       86400);         // Duration of cached files in seconds
-define('THUMB_BROWSER_CACHE',   true);          // Browser cache true or false
+define('THUMB_BROWSER_CACHE',   true);         // Browser cache true or false
 define('SHARPEN_MIN',           12);            // Minimum sharpen value
 define('SHARPEN_MAX',           28);            // Maximum sharpen value
 define('ADJUST_ORIENTATION',    true);          // Auto adjust orientation for JPEG true or false
@@ -27,6 +27,7 @@ $align = isset($_GET['align']) ? $_GET['align'] : false;
 $sharpen = isset($_GET['sharpen']) ? max(0, min(100, $_GET['sharpen'])) : 0;
 $gray = isset($_GET['gray']) ? max(0, min(1, $_GET['gray'])) : 0;
 $ignore = isset($_GET['ignore']) ? max(0, min(1, $_GET['ignore'])) : 0;
+$format = isset($_GET['format']) ? max(0, min(3, $_GET['format'])) : 0;
 $path = parse_url($src);
 
 if (isset($path['scheme'])) {
@@ -61,18 +62,15 @@ if (!is_writable(THUMB_CACHE_DIR)) {
 if (isset($path['scheme']) || !file_exists($src)) {
     die('File cannot be found');
 }
-if (!in_array(strtolower(substr(strrchr($src, '.'), 1)), array('gif', 'jpg', 'jpeg', 'png'))) {
-    die('File is not an image');
-}
 
-$file_salt = 'v1.0.6';
+$file_salt = 'v1.0.7';
 $file_size = filesize($src);
 $file_time = filemtime($src);
 $file_date = gmdate('D, d M Y H:i:s T', $file_time);
-$file_type = strtolower(substr(strrchr($src, '.'), 1));
-$file_hash = md5($file_salt . ($src.$size.$crop.$trim.$zoom.$align.$sharpen.$gray.$ignore) . $file_time);
+$file_pathinfo = pathinfo($src);
+$file_type = array($file_pathinfo['extension'], 'gif', 'jpeg', 'png')[$format];
+$file_hash = md5($file_salt . ($src . $size . $crop . $trim . $zoom . $align . $sharpen . $gray . $ignore . $format) . $file_time);
 $file_temp = THUMB_CACHE_DIR . $file_hash . '.img.txt';
-$file_name = basename(substr($src, 0, strrpos($src, '.')) . strtolower(strrchr($src, '.')));
 
 if (!file_exists(THUMB_CACHE_INDEX)) {
     touch(THUMB_CACHE_INDEX);
@@ -103,13 +101,17 @@ if (THUMB_BROWSER_CACHE && (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) || isset($
 }
 
 if (!file_exists($file_temp)) {
-    list($w0, $h0, $type) = getimagesize($src);
+    $file_info = getimagesize($src);
+    if($file_info== false){
+        die('File is not an image');
+    }
+    list($w0, $h0, $type) = $file_info;
     $data = file_get_contents($src);
     if ($ignore && $type == 1) {
         if (preg_match('/\x00\x21\xF9\x04.{4}\x00(\x2C|\x21)/s', $data)) {
             header('Content-Type: image/gif');
             header('Content-Length: ' . $file_size);
-            header('Content-Disposition: inline; filename="' . $file_name . '"');
+            header('Content-Disposition: inline; filename="' . $file_pathinfo['basename'] . '"');
             header('Last-Modified: ' . $file_date);
             header('ETag: ' . $file_hash);
             header('Accept-Ranges: none');
@@ -226,8 +228,8 @@ if (!file_exists($file_temp)) {
     $im = imagecreatetruecolor($w, $h);
     $bg = imagecolorallocate($im, 255, 255, 255);
     imagefill($im, 0, 0, $bg);
-    switch ($type) {
-        case 1:
+    switch ($file_type) {
+        case 'gif':
             imagecopyresampled($im, $oi, $x, $y, 0, 0, $w1, $h1, $w0, $h0);
             if ($sharpen && version_compare(PHP_VERSION, '5.1.0', '>=')) {
                 imageconvolution($im, $matrix, $divisor, 0);
@@ -237,7 +239,8 @@ if (!file_exists($file_temp)) {
             }
             imagegif($im, $file_temp);
             break;
-        case 2:
+        case 'jpg':
+        case 'jpeg':
             imagecopyresampled($im, $oi, $x, $y, 0, 0, $w1, $h1, $w0, $h0);
             if ($sharpen && version_compare(PHP_VERSION, '5.1.0', '>=')) {
                 imageconvolution($im, $matrix, $divisor, 0);
@@ -247,7 +250,7 @@ if (!file_exists($file_temp)) {
             }
             imagejpeg($im, $file_temp, JPEG_QUALITY);
             break;
-        case 3:
+        case 'png':
             imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
             imagesavealpha($im, true);
             imagealphablending($im, false);
@@ -269,7 +272,7 @@ if (!file_exists($file_temp)) {
 
 header('Content-Type: image/' . $file_type);
 header('Content-Length: ' . filesize($file_temp));
-header('Content-Disposition: inline; filename="' . $file_name . '"');
+header('Content-Disposition: inline; filename="' . $file_pathinfo['basename'] . '"');
 header('Last-Modified: ' . $file_date);
 header('ETag: ' . $file_hash);
 header('Accept-Ranges: none');

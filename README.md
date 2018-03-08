@@ -73,6 +73,17 @@ Firstly, make sure your cache directory is writable, then access the script like
         <td>0</td>
         <td>0 = Displays resized image as normal<br />1 = Displays original image file with the animation present</td>
     </tr>
+    <tr>
+        <td>format</td>
+        <td>0 - 3</td>
+        <td>0</td>
+        <td>Output image format<br>
+        0 = Same to <code>src</code> Image Format<br>
+        1 = GIF<br>
+        2 = JPEG<br>
+        3 = PNG
+        </td>
+    </tr>
 </table>
 
 ## Size Parameter
