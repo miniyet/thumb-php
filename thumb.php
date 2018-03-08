@@ -7,13 +7,16 @@ Author:     Jamie Bicknell
 Twitter:    @jamiebicknell
 */
 
-define('THUMB_CACHE',           './cache/');    // Path to cache directory (must be writeable)
+define('THUMB_CACHE',           'cache');    // Path to cache directory (must be writeable)
 define('THUMB_CACHE_AGE',       86400);         // Duration of cached files in seconds
 define('THUMB_BROWSER_CACHE',   true);          // Browser cache true or false
 define('SHARPEN_MIN',           12);            // Minimum sharpen value
 define('SHARPEN_MAX',           28);            // Maximum sharpen value
 define('ADJUST_ORIENTATION',    true);          // Auto adjust orientation for JPEG true or false
 define('JPEG_QUALITY',          100);           // Quality of generated JPEGs (0 - 100; 100 being best)
+
+define('THUMB_CACHE_DIR', realpath(THUMB_CACHE) . DIRECTORY_SEPARATOR);
+define('THUMB_CACHE_INDEX', THUMB_CACHE_DIR . 'index.html');
 
 $src = isset($_GET['src']) ? $_GET['src'] : false;
 $size = isset($_GET['size']) ? str_replace(array('<', 'x'), '', $_GET['size']) != '' ? $_GET['size'] : 100 : 100;
@@ -52,7 +55,7 @@ if (isset($path['scheme'])) {
 if (!extension_loaded('gd')) {
     die('GD extension is not installed');
 }
-if (!is_writable(THUMB_CACHE)) {
+if (!is_writable(THUMB_CACHE_DIR)) {
     die('Cache not writable');
 }
 if (isset($path['scheme']) || !file_exists($src)) {
@@ -62,22 +65,22 @@ if (!in_array(strtolower(substr(strrchr($src, '.'), 1)), array('gif', 'jpg', 'jp
     die('File is not an image');
 }
 
-$file_salt = 'v1.0.5';
+$file_salt = 'v1.0.6';
 $file_size = filesize($src);
 $file_time = filemtime($src);
 $file_date = gmdate('D, d M Y H:i:s T', $file_time);
 $file_type = strtolower(substr(strrchr($src, '.'), 1));
 $file_hash = md5($file_salt . ($src.$size.$crop.$trim.$zoom.$align.$sharpen.$gray.$ignore) . $file_time);
-$file_temp = THUMB_CACHE . $file_hash . '.img.txt';
+$file_temp = THUMB_CACHE_DIR . $file_hash . '.img.txt';
 $file_name = basename(substr($src, 0, strrpos($src, '.')) . strtolower(strrchr($src, '.')));
 
-if (!file_exists(THUMB_CACHE . 'index.html')) {
-    touch(THUMB_CACHE . 'index.html');
+if (!file_exists(THUMB_CACHE_INDEX)) {
+    touch(THUMB_CACHE_INDEX);
 }
-if (($fp = fopen(THUMB_CACHE . 'index.html', 'r')) !== false) {
+if (($fp = fopen(THUMB_CACHE_INDEX, 'r')) !== false) {
     if (flock($fp, LOCK_EX)) {
-        if (time() - THUMB_CACHE_AGE > filemtime(THUMB_CACHE . 'index.html')) {
-            $files = glob(THUMB_CACHE . '*.img.txt');
+        if (time() - THUMB_CACHE_AGE > filemtime(THUMB_CACHE_INDEX)) {
+            $files = glob(THUMB_CACHE_DIR . '*.img.txt');
             if (is_array($files) && count($files) > 0) {
                 foreach ($files as $file) {
                     if (time() - THUMB_CACHE_AGE > filemtime($file)) {
@@ -85,7 +88,7 @@ if (($fp = fopen(THUMB_CACHE . 'index.html', 'r')) !== false) {
                     }
                 }
             }
-            touch(THUMB_CACHE . 'index.html');
+            touch(THUMB_CACHE_INDEX);
         }
         flock($fp, LOCK_UN);
     }
