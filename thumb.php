@@ -5,15 +5,15 @@ Title:      Thumb.php
 URL:        http://github.com/jamiebicknell/Thumb
 Author:     Jamie Bicknell
 Twitter:    @jamiebicknell
-*/
+ */
 
-define('THUMB_CACHE',           'cache');       // Path to cache directory (must be writeable)
-define('THUMB_CACHE_AGE',       86400);         // Duration of cached files in seconds
-define('THUMB_BROWSER_CACHE',   true);         // Browser cache true or false
-define('SHARPEN_MIN',           12);            // Minimum sharpen value
-define('SHARPEN_MAX',           28);            // Maximum sharpen value
-define('ADJUST_ORIENTATION',    true);          // Auto adjust orientation for JPEG true or false
-define('JPEG_QUALITY',          100);           // Quality of generated JPEGs (0 - 100; 100 being best)
+define('THUMB_CACHE', 'cache'); // Path to cache directory (must be writeable)
+define('THUMB_CACHE_AGE', 86400); // Duration of cached files in seconds
+define('THUMB_BROWSER_CACHE', true); // Browser cache true or false
+define('SHARPEN_MIN', 12); // Minimum sharpen value
+define('SHARPEN_MAX', 28); // Maximum sharpen value
+define('ADJUST_ORIENTATION', true); // Auto adjust orientation for JPEG true or false
+define('JPEG_QUALITY', 100); // Quality of generated JPEGs (0 - 100; 100 being best)
 
 define('THUMB_CACHE_DIR', realpath(THUMB_CACHE) . DIRECTORY_SEPARATOR);
 define('THUMB_CACHE_INDEX', THUMB_CACHE_DIR . 'index.html');
@@ -102,7 +102,7 @@ if (THUMB_BROWSER_CACHE && (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) || isset($
 
 if (!file_exists($file_temp)) {
     $file_info = getimagesize($src);
-    if($file_info== false){
+    if ($file_info == false) {
         die('File is not an image');
     }
     list($w0, $h0, $type) = $file_info;
@@ -176,7 +176,7 @@ if (!file_exists($file_temp)) {
             }
         }
     }
-    list($w,$h) = explode('x', str_replace('<', '', $size) . 'x');
+    list($w, $h) = explode('x', str_replace('<', '', $size) . 'x');
     $w = ($w != '') ? floor(max(8, min(1500, $w))) : '';
     $h = ($h != '') ? floor(max(8, min(1500, $h))) : '';
     if (strstr($size, '<')) {
@@ -217,7 +217,7 @@ if (!file_exists($file_temp)) {
     $w = ($trim_w) ? (($w0 / $h0) > ($w / $h)) ? min($w, $w1) : $w1 : $w;
     $h = ($trim_h) ? (($w0 / $h0) < ($w / $h)) ? min($h, $h1) : $h1 : $h;
     if ($sharpen) {
-        $matrix = array (
+        $matrix = array(
             array(-1, -1, -1),
             array(-1, SHARPEN_MAX - ($sharpen * (SHARPEN_MAX - SHARPEN_MIN)) / 100, -1),
             array(-1, -1, -1));
