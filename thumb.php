@@ -15,10 +15,29 @@ define('SHARPEN_MAX', 28); // Maximum sharpen value
 define('ADJUST_ORIENTATION', true); // Auto adjust orientation for JPEG true or false
 define('JPEG_QUALITY', 100); // Quality of generated JPEGs (0 - 100; 100 being best)
 
-define('THUMB_CACHE_DIR', realpath(THUMB_CACHE) . DIRECTORY_SEPARATOR);
-define('THUMB_CACHE_INDEX', THUMB_CACHE_DIR . 'index.html');
+define('THUMB_CACHE_REAL', realpath(THUMB_CACHE) . DIRECTORY_SEPARATOR);
+define('THUMB_CACHE_INDEX', THUMB_CACHE_REAL . 'index.html');
+define('THUMB_CACHE_EXTENSION', '.thumb.data');
 
-$src = isset($_GET['src']) ? $_GET['src'] : false;
+function image_headers()
+{
+    header('Content-Type: image/' . $file_type);
+    header('Content-Length: ' . $file_size);
+    header('Content-Disposition: inline; filename="' . $file_pathinfo['basename'] . '"');
+    header('Last-Modified: ' . $file_date);
+    header('ETag: ' . $file_hash);
+    header('Accept-Ranges: none');
+    if (THUMB_BROWSER_CACHE) {
+        header('Cache-Control: max-age=604800, must-revalidate');
+        header('Expires: ' . gmdate('D, d M Y H:i:s T', strtotime('+7 days')));
+    } else {
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Expires: ' . gmdate('D, d M Y H:i:s T'));
+        header('Pragma: no-cache');
+    }
+}
+
+$src = isset($_GET['src']) ? $_GET['src'] : die('Missing argument');
 $size = isset($_GET['size']) ? str_replace(array('<', 'x'), '', $_GET['size']) != '' ? $_GET['size'] : 100 : 100;
 $crop = isset($_GET['crop']) ? max(0, min(1, $_GET['crop'])) : 1;
 $trim = isset($_GET['trim']) ? max(0, min(1, $_GET['trim'])) : 0;
@@ -56,21 +75,21 @@ if (isset($path['scheme'])) {
 if (!extension_loaded('gd')) {
     die('GD extension is not installed');
 }
-if (!is_writable(THUMB_CACHE_DIR)) {
+if (!is_writable(THUMB_CACHE_REAL)) {
     die('Cache not writable');
 }
 if (isset($path['scheme']) || !file_exists($src)) {
     die('File cannot be found');
 }
 
-$file_salt = 'v1.0.7';
+$file_salt = 'v1.0.9';
 $file_size = filesize($src);
 $file_time = filemtime($src);
 $file_date = gmdate('D, d M Y H:i:s T', $file_time);
 $file_pathinfo = pathinfo($src);
 $file_type = array($file_pathinfo['extension'], 'gif', 'jpeg', 'png')[$format];
 $file_hash = md5($file_salt . ($src . $size . $crop . $trim . $zoom . $align . $sharpen . $gray . $ignore . $format) . $file_time);
-$file_temp = THUMB_CACHE_DIR . $file_hash . '.img.txt';
+$file_temp = THUMB_CACHE_REAL . $file_hash . THUMB_CACHE_EXTENSION;
 
 if (!file_exists(THUMB_CACHE_INDEX)) {
     touch(THUMB_CACHE_INDEX);
@@ -78,7 +97,7 @@ if (!file_exists(THUMB_CACHE_INDEX)) {
 if (($fp = fopen(THUMB_CACHE_INDEX, 'r')) !== false) {
     if (flock($fp, LOCK_EX)) {
         if (time() - THUMB_CACHE_AGE > filemtime(THUMB_CACHE_INDEX)) {
-            $files = glob(THUMB_CACHE_DIR . '*.img.txt');
+            $files = glob(THUMB_CACHE_REAL . '*' . THUMB_CACHE_EXTENSION);
             if (is_array($files) && count($files) > 0) {
                 foreach ($files as $file) {
                     if (time() - THUMB_CACHE_AGE > filemtime($file)) {
@@ -109,20 +128,7 @@ if (!file_exists($file_temp)) {
     $data = file_get_contents($src);
     if ($ignore && $type == 1) {
         if (preg_match('/\x00\x21\xF9\x04.{4}\x00(\x2C|\x21)/s', $data)) {
-            header('Content-Type: image/gif');
-            header('Content-Length: ' . $file_size);
-            header('Content-Disposition: inline; filename="' . $file_pathinfo['basename'] . '"');
-            header('Last-Modified: ' . $file_date);
-            header('ETag: ' . $file_hash);
-            header('Accept-Ranges: none');
-            if (THUMB_BROWSER_CACHE) {
-                header('Cache-Control: max-age=604800, must-revalidate');
-                header('Expires: ' . gmdate('D, d M Y H:i:s T', strtotime('+7 days')));
-            } else {
-                header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-                header('Expires: ' . gmdate('D, d M Y H:i:s T'));
-                header('Pragma: no-cache');
-            }
+            image_headers();
             die($data);
         }
     }
@@ -270,19 +276,6 @@ if (!file_exists($file_temp)) {
     imagedestroy($oi);
 }
 
-header('Content-Type: image/' . $file_type);
-header('Content-Length: ' . filesize($file_temp));
-header('Content-Disposition: inline; filename="' . $file_pathinfo['basename'] . '"');
-header('Last-Modified: ' . $file_date);
-header('ETag: ' . $file_hash);
-header('Accept-Ranges: none');
-if (THUMB_BROWSER_CACHE) {
-    header('Cache-Control: max-age=604800, must-revalidate');
-    header('Expires: ' . gmdate('D, d M Y H:i:s T', strtotime('+7 days')));
-} else {
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Expires: ' . gmdate('D, d M Y H:i:s T'));
-    header('Pragma: no-cache');
-}
-
+$file_size = filesize($file_temp);
+image_headers();
 readfile($file_temp);
